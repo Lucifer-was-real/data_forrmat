@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Data Parser</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #2563eb;
+            --light-blue: #eff6ff;
+            --text-dark: #1f2937;
+            --text-light: #6b7280;
+            --background-color: #f9fafb;
+            --border-color: #d1d5db;
+            --white: #ffffff;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            background-color: var(--background-color);
+            color: var(--text-dark);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1.5rem;
+            box-sizing: border-box;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background-color: var(--white);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .header {
+            background-color: var(--primary-blue);
+            color: var(--white);
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+
+        .header p {
+            margin: 0.5rem 0 0;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 2rem;
+        }
+
+        .upload-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            padding: 2rem;
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            background-color: var(--light-blue);
+            margin-bottom: 2rem;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-label {
+            background-color: var(--primary-blue);
+            color: var(--white);
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+
+        .file-label:hover {
+            background-color: #1d4ed8;
+        }
+
+        #fileName {
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+        
+        .table-container {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 1rem 1.25rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+        
+        th {
+            background-color: #f3f4f6;
+            font-weight: 600;
+            color: var(--text-light);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+
+        .watermark {
+            position: fixed;
+            bottom: 15px;
+            right: 20px;
+            font-size: 0.8rem;
+            color: #9ca3af;
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 5px 10px;
+            border-radius: 6px;
+            backdrop-filter: blur(2px);
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>Data Parser Pro</h1>
+            <p>Upload your text file to extract and view structured data.</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="upload-section">
+                <label for="fileInput" class="file-label">Choose File</label>
+                <input type="file" id="fileInput" accept=".txt">
+                <span id="fileName">No file selected</span>
+            </div>
+            
+            <div class="table-container">
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>SITE ID</th>
+                            <th>LAT</th>
+                            <th>LONG</th>
+                            <th>ANGLE (deg)</th>
+                            <th>DISTANCE (m)</th>
+                            <th>BUILDING</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- JavaScript will populate this area -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="watermark">
+        Made by Rony
+    </div>
+
+    <script>
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            const fileNameSpan = document.getElementById('fileName');
+            
+            if (!file) {
+                fileNameSpan.textContent = 'No file selected';
+                return;
+            }
+            
+            fileNameSpan.textContent = file.name;
+
+            const formData = new FormData();
+            formData.append('dataFile', file);
+
+            // Replace with your live Render URL
+            fetch('https://pyback-zb0d.onrender.com/upload', {
+                method: 'POST',
+                body: formData,
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Server responded with an error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                displayDataInTable(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Could not process the file. Please check the backend server and file format.');
+            });
+        });
+
+        function displayDataInTable(data) {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+
+            if (data.length === 0) {
+                const row = tableBody.insertRow();
+                const cell = row.insertCell();
+                cell.colSpan = 6;
+                cell.textContent = 'No valid data found in the file.';
+                cell.style.textAlign = 'center';
+                cell.style.padding = '2rem';
+                cell.style.color = 'var(--text-light)';
+                return;
+            }
+
+            data.forEach(item => {
+                const row = tableBody.insertRow();
+                row.insertCell().textContent = item.siteId;
+                row.insertCell().textContent = item.lat;
+                row.insertCell().textContent = item.long;
+                row.insertCell().textContent = item.angle;
+                row.insertCell().textContent = item.distance;
+                row.insertCell().textContent = item.building;
+            });
+        }
+    </script>
+
+</body>
+</html>
