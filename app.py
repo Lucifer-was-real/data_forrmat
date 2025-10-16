@@ -15,6 +15,7 @@ def parse_data_content(data):
     site_id_map = {}
     # Use a defaultdict to easily group all data entries under a Site ID
     grouped_data = defaultdict(list)
+    # This variable will hold the current reference ID as we loop through the file.
     current_short_id = None
     
     # --- PASS 1: Find all long-form IDs and create a map ---
@@ -27,6 +28,7 @@ def parse_data_content(data):
             site_id_map[short_id] = full_id
 
     # --- PASS 2: Extract all data and associate it with the correct ID ---
+    # This loop acts like a state machine, processing data based on the last reference ID it found.
     for line in lines:
         # Clean up the line by removing timestamps or chat prefixes
         temp_line = re.sub(r'.*:\s*', '', line).strip()
@@ -36,21 +38,26 @@ def parse_data_content(data):
         if not cleaned_line or cleaned_line.startswith('<Media omitted>'):
             continue
 
-        # Find a short Site ID and set it as the current context
+        # Find a short Site ID (a "reference number") and set it as the current context.
         short_id_match = re.match(r'^\b([A-Z]?\d{3,4})\b', cleaned_line)
         if short_id_match:
+            # When a reference is found (e.g., "0116"), we update our state.
             current_short_id = short_id_match.group(1)
+            # We then skip to the next line, because the data is *below* the reference.
             continue
 
-        # If we haven't found a Site ID in the file yet, we can't process data
+        # If we haven't found a Site ID in the file yet, we can't process data.
+        # This ensures we only start collecting data *after* the first reference ID.
         if not current_short_id:
             continue
 
-        # Use flexible patterns (regex) to find all the data points in any order
+        # Use flexible patterns (regex) to find all the data points in any order.
+        # This part only runs on lines that are NOT reference IDs.
         lat_long_match = re.search(r'(\d{2}\.\d+)\s*°?\s*(\d{2,3}\.\d+)', cleaned_line)
         angle_distance_match = re.search(r'\b(\d{1,3})\b(?:[\s,]*deg)?(?:[\s,]+)(\d+)\s*m', cleaned_line, re.IGNORECASE)
         building_match = re.search(r'(B\d)', cleaned_line, re.IGNORECASE)
 
+        # If a line contains data, it will be associated with the last reference ID we found.
         if lat_long_match and angle_distance_match:
             # Look up the full ID from our map, or use the short ID if no full ID exists
             full_site_id = site_id_map.get(current_short_id, current_short_id)
