@@ -29,7 +29,10 @@ def parse_data_content(data):
     # --- PASS 2: Extract all data and associate it with the correct ID ---
     for line in lines:
         # Clean up the line by removing timestamps or chat prefixes
-        cleaned_line = re.sub(r'.*:\s*', '', line).strip()
+        temp_line = re.sub(r'.*:\s*', '', line).strip()
+        # ** NEW ** Remove bracketed and parenthesized comments to isolate data
+        cleaned_line = re.sub(r'\(.*?\)|\s*\[.*?\]', '', temp_line).strip()
+
         if not cleaned_line or cleaned_line.startswith('<Media omitted>'):
             continue
 
