@@ -1,4 +1,4 @@
-# app.py - Final version with missing ID detection
+# app.py - Final version with corrected regex
 
 import re
 from flask import Flask, request, jsonify
@@ -41,7 +41,8 @@ def parse_data_content(data):
             continue
 
         lat_long_match = re.search(r'(\d{2}\.\d+)\s*°?\s*(\d{2,3}\.\d+)', cleaned_line)
-        angle_distance_match = re.search(r'\b(\d{1,3})\b(?:[\s,]*deg)?(?:[\s,]+)(\d+)\s*m', cleaned_line, re.IGNORECASE)
+        # ** MODIFIED REGEX ** - Now correctly handles cases like "22m"
+        angle_distance_match = re.search(r'\b(\d{1,3})\b(?:[\s,]*deg)?[\s,]*(\d+)\s*m', cleaned_line, re.IGNORECASE)
         building_match = re.search(r'(B\d)', cleaned_line, re.IGNORECASE)
 
         if lat_long_match and angle_distance_match:
