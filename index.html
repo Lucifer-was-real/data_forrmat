@@ -17,6 +17,7 @@
             --border-color: #d1d5db;
             --white: #ffffff;
             --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --danger-color: #dc2626;
         }
 
         body {
@@ -143,6 +144,79 @@
             backdrop-filter: blur(2px);
             z-index: 1000;
         }
+
+        /* --- New Modal Styles --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none; /* Hidden by default */
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background-color: var(--white);
+            padding: 2rem;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            color: var(--danger-color);
+            font-size: 1.25rem;
+        }
+
+        .close-button {
+            font-size: 1.75rem;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            background: none;
+            color: var(--text-light);
+            line-height: 1;
+        }
+
+        #missing-ids-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        #missing-ids-list li {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        #missing-ids-list li:last-child {
+            border-bottom: none;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
     </style>
 </head>
 <body>
@@ -155,7 +229,7 @@
         
         <div class="main-content">
             <div class="upload-section">
-                <label for="fileInput" class="file-label">Choose File</label>
+                <label for="fileInput" class="file-label" id="upload-button">Choose File</label>
                 <input type="file" id="fileInput" accept=".txt">
                 <span id="fileName">No file selected</span>
             </div>
@@ -180,27 +254,45 @@
         </div>
     </div>
 
-    <div class="watermark">
-        Made by Rony
+    <div class="watermark">Made by Rony</div>
+
+    <!-- Modal for Missing IDs -->
+    <div class="modal-overlay" id="missing-id-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Missing Data Warning</h2>
+                <button class="close-button" id="close-modal-btn">&times;</button>
+            </div>
+            <p>The following Site IDs were found in the file but had no associated data:</p>
+            <ul id="missing-ids-list">
+                <!-- Missing IDs will be populated here by JavaScript -->
+            </ul>
+        </div>
     </div>
 
     <script>
-        document.getElementById('fileInput').addEventListener('change', function(event) {
+        const fileInput = document.getElementById('fileInput');
+        const fileNameSpan = document.getElementById('fileName');
+        const uploadButton = document.getElementById('upload-button');
+        const modal = document.getElementById('missing-id-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const missingIdsList = document.getElementById('missing-ids-list');
+
+        fileInput.addEventListener('change', function(event) {
             const file = event.target.files[0];
-            const fileNameSpan = document.getElementById('fileName');
-            
             if (!file) {
                 fileNameSpan.textContent = 'No file selected';
                 return;
             }
             
-            fileNameSpan.textContent = file.name;
+            fileNameSpan.textContent = `File: ${file.name}`;
+            uploadButton.textContent = 'Processing...';
 
             const formData = new FormData();
             formData.append('dataFile', file);
 
             // Replace with your live Render URL
-            fetch('https://data-forrmat.onrender.com/upload', {
+            fetch('https://backendnh.onrender.com/upload', {
                 method: 'POST',
                 body: formData,
             })
@@ -211,11 +303,15 @@
                 return response.json();
             })
             .then(data => {
-                displayDataInTable(data);
+                // The backend now sends an object with two keys: parsedData and missingIds
+                displayDataInTable(data.parsedData);
+                handleMissingIds(data.missingIds);
+                uploadButton.textContent = 'Choose Another File';
             })
             .catch(error => {
                 console.error('Error:', error);
                 alert('Could not process the file. Please check the backend server and file format.');
+                uploadButton.textContent = 'Upload Failed - Try Again';
             });
         });
 
@@ -223,11 +319,11 @@
             const tableBody = document.getElementById('tableBody');
             tableBody.innerHTML = '';
 
-            if (data.length === 0) {
+            if (!data || data.length === 0) {
                 const row = tableBody.insertRow();
                 const cell = row.insertCell();
                 cell.colSpan = 6;
-                cell.textContent = 'No valid data found in the file.';
+                cell.textContent = 'No valid data was found to display.';
                 cell.style.textAlign = 'center';
                 cell.style.padding = '2rem';
                 cell.style.color = 'var(--text-light)';
@@ -244,6 +340,30 @@
                 row.insertCell().textContent = item.building;
             });
         }
+
+        // New function to handle the pop-up modal
+        function handleMissingIds(missingIds) {
+            if (missingIds && missingIds.length > 0) {
+                missingIdsList.innerHTML = ''; // Clear previous list
+                missingIds.forEach(id => {
+                    const li = document.createElement('li');
+                    li.textContent = id;
+                    missingIdsList.appendChild(li);
+                });
+                modal.style.display = 'flex'; // Show the modal
+            }
+        }
+
+        // Event listeners to close the modal
+        closeModalBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) { // Close if clicking on the gray overlay
+                modal.style.display = 'none';
+            }
+        });
     </script>
 
 </body>
